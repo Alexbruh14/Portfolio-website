@@ -197,7 +197,7 @@ export default function BookReviews() {
       <BookReviewFormModal
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSave={data => addReview(data)}
+        onSave={data => editing ? updateReview(editing.id, data) : addReview(data)}
         initial={editing}
         onDelete={editing ? () => deleteReview(editing.id) : undefined}
       />

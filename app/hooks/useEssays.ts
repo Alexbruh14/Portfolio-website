@@ -116,7 +116,9 @@ export function useEssays() {
   useEffect(() => { fetchEssays(); }, []);
 
   async function addEssay(essay: Omit<Essay, "id">) {
-    const { error } = await supabase.from("essays").insert([essay]);
+    const data = { ...essay } as Record<string, unknown>;
+    delete data.id;
+    const { error } = await supabase.from("essays").insert([data]);
     if (!error) fetchEssays();
     return error;
   }

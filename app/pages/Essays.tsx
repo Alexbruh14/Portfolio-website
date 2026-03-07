@@ -210,7 +210,7 @@ export default function Essays() {
       <EssayFormModal
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        onSave={data => addEssay(data)}
+        onSave={data => editing ? updateEssay(editing.id, data) : addEssay(data)}
         initial={editing}
         onDelete={editing ? () => deleteEssay(editing.id) : undefined}
       />

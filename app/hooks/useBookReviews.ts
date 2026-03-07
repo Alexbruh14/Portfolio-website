@@ -110,7 +110,9 @@ export function useBookReviews() {
   useEffect(() => { fetchReviews(); }, []);
 
   async function addReview(review: Omit<BookReview, "id">) {
-    const { error } = await supabase.from("book_reviews").insert([review]);
+    const data = { ...review } as Record<string, unknown>;
+    delete data.id;
+    const { error } = await supabase.from("book_reviews").insert([data]);
     if (!error) fetchReviews();
     return error;
   }

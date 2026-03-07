@@ -66,7 +66,8 @@ export function BookReviewFormModal({ open, onClose, onSave, onDelete, initial }
     const err = await onSave(form);
     setSaving(false);
     if (err) {
-      setError("Failed to save. Check your Supabase connection.");
+      const msg = (err as { message?: string })?.message;
+      setError(msg ? `Supabase error: ${msg}` : "Failed to save. Check your Supabase connection.");
     } else {
       onClose();
     }
