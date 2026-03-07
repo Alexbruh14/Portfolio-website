@@ -1,7 +1,12 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router";
+import { useAuth } from "../contexts/AuthContext";
+import { LoginModal } from "./LoginModal";
 
 export function Navigation() {
   const location = useLocation();
+  const { user } = useAuth();
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const isActive = (path: string) => {
     if (path === "/" && location.pathname === "/") return true;
@@ -10,6 +15,7 @@ export function Navigation() {
   };
 
   return (
+    <>
     <nav className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
       <div className="max-w-6xl mx-auto px-8 py-5">
         <div className="flex items-center justify-between">
@@ -43,9 +49,20 @@ export function Navigation() {
                 {label}
               </Link>
             ))}
+            <button
+              onClick={() => setLoginOpen(true)}
+              className={`text-xs tracking-[0.15em] uppercase transition-colors ${
+                user ? "text-secondary" : "text-muted-foreground/40 hover:text-muted-foreground"
+              }`}
+              title={user ? "Admin session active" : "Admin login"}
+            >
+              {user ? "● Admin" : "·"}
+            </button>
           </div>
         </div>
       </div>
     </nav>
+    <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+    </>
   );
 }

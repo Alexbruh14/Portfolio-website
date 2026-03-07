@@ -1,8 +1,12 @@
 import { Outlet } from "react-router";
 import { Navigation } from "./Navigation";
+import { AuthProvider } from "../contexts/AuthContext";
+import { SiteContentProvider } from "../contexts/SiteContentContext";
 
 export default function Root() {
   return (
+    <AuthProvider>
+    <SiteContentProvider>
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
       <main className="flex-1">
@@ -42,5 +46,7 @@ export default function Root() {
         </div>
       </footer>
     </div>
+    </SiteContentProvider>
+    </AuthProvider>
   );
 }
