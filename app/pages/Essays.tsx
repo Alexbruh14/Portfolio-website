@@ -29,7 +29,9 @@ export default function Essays() {
   // ── Detail view ──────────────────────────────────────────────
   if (selected) {
     const pdfUrl = selected.pdf_file
-      ? `${import.meta.env.BASE_URL}pdfs/${selected.pdf_file}`
+      ? selected.pdf_file.startsWith("http")
+        ? selected.pdf_file
+        : `${import.meta.env.BASE_URL}pdfs/${selected.pdf_file}`
       : null;
 
     return (

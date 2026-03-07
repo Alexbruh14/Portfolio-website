@@ -1,6 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Essay } from "../../hooks/useEssays";
 import { ImageLibraryModal } from "./ImageLibraryModal";
+import { useImageLibrary } from "../../hooks/useImageLibrary";
+import { supabase } from "../../../lib/supabase";
+
+const PDF_BUCKET = "portfolio-pdfs";
+const supabaseConfigured = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 type FormData = Omit<Essay, "id">;
 
@@ -31,6 +36,32 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [tab, setTab] = useState<"info" | "content">("info");
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const { upload, uploading } = useImageLibrary();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
+
+  async function handleDirectUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = await upload(file);
+    if (img) set("image_url", img.url);
+    e.target.value = "";
+  }
+
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !supabaseConfigured) return;
+    setPdfUploading(true);
+    const filename = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
+    const { error } = await supabase.storage.from(PDF_BUCKET).upload(filename, file, { cacheControl: "3600", upsert: false });
+    if (!error) {
+      const { data } = supabase.storage.from(PDF_BUCKET).getPublicUrl(filename);
+      set("pdf_file", data.publicUrl);
+    }
+    setPdfUploading(false);
+    e.target.value = "";
+  }
 
   useEffect(() => {
     if (open) {
@@ -125,6 +156,16 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
                   >
                     {form.image_url ? "Change Image" : "Browse Library"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    title="Upload from your computer"
+                    className="w-8 h-8 border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors disabled:opacity-50 text-base"
+                  >
+                    {uploading ? "…" : "↑"}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleDirectUpload} />
                   {form.image_url && (
                     <button type="button" onClick={() => set("image_url", "")} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
                       Remove
@@ -137,7 +178,36 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
                 onClose={() => setLibraryOpen(false)}
                 onSelect={url => { set("image_url", url); setLibraryOpen(false); }}
               />
-              <Field label="PDF filename" value={form.pdf_file} onChange={v => set("pdf_file", v)} placeholder="essay.pdf (must be in public/pdfs/)" />
+              <div>
+                <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground block mb-1.5">PDF File</label>
+                <div className="flex items-center gap-3">
+                  {form.pdf_file && (
+                    <a
+                      href={form.pdf_file.startsWith("http") ? form.pdf_file : `${import.meta.env.BASE_URL}pdfs/${form.pdf_file}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-secondary underline underline-offset-2 truncate max-w-[140px]"
+                    >
+                      {form.pdf_file.startsWith("http") ? form.pdf_file.split("/").pop() : form.pdf_file}
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => pdfRef.current?.click()}
+                    disabled={pdfUploading || !supabaseConfigured}
+                    title={supabaseConfigured ? "Upload a PDF" : "Supabase not configured"}
+                    className="px-3 py-2 border border-border text-[10px] tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors disabled:opacity-50"
+                  >
+                    {pdfUploading ? "Uploading…" : form.pdf_file ? "Replace PDF" : "↑ Upload PDF"}
+                  </button>
+                  <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
+                  {form.pdf_file && (
+                    <button type="button" onClick={() => set("pdf_file", "")} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
               <TextareaField
                 label="Short Excerpt"
                 value={form.excerpt}

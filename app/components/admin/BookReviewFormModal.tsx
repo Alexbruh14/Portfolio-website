@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { BookReview } from "../../hooks/useBookReviews";
 import { ImageLibraryModal } from "./ImageLibraryModal";
+import { useImageLibrary } from "../../hooks/useImageLibrary";
 
 type FormData = Omit<BookReview, "id">;
 
@@ -29,6 +30,16 @@ export function BookReviewFormModal({ open, onClose, onSave, onDelete, initial }
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const { upload, uploading } = useImageLibrary();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleDirectUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const img = await upload(file);
+    if (img) set("image_url", img.url);
+    e.target.value = "";
+  }
 
   useEffect(() => {
     if (open) {
@@ -106,6 +117,16 @@ export function BookReviewFormModal({ open, onClose, onSave, onDelete, initial }
               >
                 {form.image_url ? "Change Image" : "Browse Library"}
               </button>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                title="Upload from your computer"
+                className="w-8 h-8 border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors disabled:opacity-50 text-base"
+              >
+                {uploading ? "…" : "↑"}
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleDirectUpload} />
               {form.image_url && (
                 <button type="button" onClick={() => set("image_url", "")} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
                   Remove
