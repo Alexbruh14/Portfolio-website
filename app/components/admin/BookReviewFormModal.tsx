@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { BookReview } from "../../hooks/useBookReviews";
+import { ImageLibraryModal } from "./ImageLibraryModal";
 
 type FormData = Omit<BookReview, "id">;
 
@@ -27,6 +28,7 @@ export function BookReviewFormModal({ open, onClose, onSave, onDelete, initial }
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -91,7 +93,31 @@ export function BookReviewFormModal({ open, onClose, onSave, onDelete, initial }
             <Field label="Date" value={form.review_date} onChange={v => set("review_date", v)} placeholder="e.g. March 2026" />
           </div>
 
-          <Field label="Image URL" value={form.image_url} onChange={v => set("image_url", v)} placeholder="https://..." />
+          <div>
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground block mb-1.5">Cover Image</label>
+            <div className="flex items-center gap-3">
+              {form.image_url && (
+                <img src={form.image_url} alt="" className="w-16 h-16 object-cover border border-border shrink-0" />
+              )}
+              <button
+                type="button"
+                onClick={() => setLibraryOpen(true)}
+                className="px-3 py-2 border border-border text-[10px] tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors"
+              >
+                {form.image_url ? "Change Image" : "Browse Library"}
+              </button>
+              {form.image_url && (
+                <button type="button" onClick={() => set("image_url", "")} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          <ImageLibraryModal
+            open={libraryOpen}
+            onClose={() => setLibraryOpen(false)}
+            onSelect={url => { set("image_url", url); setLibraryOpen(false); }}
+          />
 
           <TextareaField
             label="Short Excerpt"

@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { EditableImage } from "../components/admin/EditableImage";
 import { SpotlightCard } from "../components/SpotlightCard";
 import { EditableText } from "../components/admin/EditableText";
 import { AdminToolbar } from "../components/admin/AdminToolbar";
@@ -33,15 +33,16 @@ export default function Home() {
       <section className="relative min-h-[88vh] overflow-hidden flex items-center border-b border-border">
 
         <div className="absolute inset-0">
-          <ImageWithFallback
-            src="https://images.unsplash.com/photo-1600178572204-6ac8886aae63?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBzdHVkZW50JTIwcG9ydHJhaXR8ZW58MXx8fHwxNzcyMzIxOTQ0fDA&ixlib=rb-4.1.0&q=80&w=1080"
+          <EditableImage
+            contentKey="hero_image"
+            defaultUrl="https://images.unsplash.com/photo-1600178572204-6ac8886aae63?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBzdHVkZW50JTIwcG9ydHJhaXR8ZW58MXx8fHwxNzcyMzIxOTQ0fDA&ixlib=rb-4.1.0&q=80&w=1080"
             alt="Portrait"
-            className="w-full h-full object-cover object-right"
+            className="w-full h-full object-cover"
           />
         </div>
 
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
             background:
               "linear-gradient(to right, #0f0c18 0%, #0f0c18 30%, rgba(15,12,24,0.85) 50%, rgba(15,12,24,0.3) 72%, transparent 100%)",
@@ -208,8 +209,9 @@ export default function Home() {
             <div className="relative">
               <div className="absolute -bottom-4 -right-4 w-full h-full border border-secondary/20" />
               <div className="relative overflow-hidden">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1639414839192-0562f4065ffd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aW50YWdlJTIwbGlicmFyeSUyMGJvb2tzfGVufDF8fHx8MTc3MjQzMTk2M3ww&ixlib=rb-4.1.0&q=80&w=1080"
+                <EditableImage
+                  contentKey="aims_image"
+                  defaultUrl="https://images.unsplash.com/photo-1639414839192-0562f4065ffd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aW50YWdlJTIwbGlicmFyeSUyMGJvb2tzfGVufDF8fHx8MTc3MjQzMTk2M3ww&ixlib=rb-4.1.0&q=80&w=1080"
                   alt="Library books"
                   className="w-full aspect-[4/3] object-cover brightness-75"
                 />
@@ -256,8 +258,9 @@ export default function Home() {
 
                 <div className="relative">
                   <div className="overflow-hidden">
-                    <ImageWithFallback
-                      src="https://images.unsplash.com/photo-1631599143424-5bc234fbebf1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx1bml2ZXJzaXR5JTIwY2FtcHVzJTIwYnVpbGRpbmd8ZW58MXx8fHwxNzcyMzYxMzIwfDA&ixlib=rb-4.1.0&q=80&w=1080"
+                    <EditableImage
+                      contentKey="contact_image"
+                      defaultUrl="https://images.unsplash.com/photo-1631599143424-5bc234fbebf1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx1bml2ZXJzaXR5JTIwY2FtcHVzJTIwYnVpbGRpbmd8ZW58MXx8fHwxNzcyMzYxMzIwfDA&ixlib=rb-4.1.0&q=80&w=1080"
                       alt="University campus"
                       className="w-full aspect-video object-cover brightness-75"
                     />
