@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { SpotlightCard } from "../components/SpotlightCard";
 
@@ -35,38 +36,44 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-8">
             <div className="max-w-lg">
 
-              <div className="flex items-center gap-4 mb-10">
-                <div className="h-px w-8 bg-secondary/40" />
-                <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">
-                  Graduate Student
-                </span>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
+              >
+                <div className="flex items-center gap-4 mb-10">
+                  <div className="h-px w-8 bg-secondary/40" />
+                  <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">
+                    Graduate Student
+                  </span>
+                </div>
 
-              <h1 className="mb-6 text-foreground">Alex<br />Herrera</h1>
+                <h1 className="mb-6 text-foreground" style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 800 }}>Alex<br />Herrera</h1>
 
-              <div className="w-16 h-px bg-secondary mb-6" />
+                <div className="w-16 h-px bg-secondary mb-6" />
 
-              <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
-                Politics & Legal Studies — specializing in constitutional theory,
-                judicial interpretation, and the foundations of democratic governance.
-              </p>
+                <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
+                  Politics & Legal Studies — specializing in constitutional theory,
+                  judicial interpretation, and the foundations of democratic governance.
+                </p>
 
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={scrollToContact}
-                  className="px-6 py-3 bg-secondary text-secondary-foreground text-xs font-semibold uppercase tracking-widest hover:bg-secondary/90 transition-colors"
-                >
-                  Get in touch
-                </button>
-                <a
-                  href="https://www.linkedin.com/in/steven-herrera-57240b3a7"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-6 py-3 border border-border text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                >
-                  LinkedIn ↗
-                </a>
-              </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={scrollToContact}
+                    className="px-6 py-3 bg-secondary text-secondary-foreground text-xs font-semibold uppercase tracking-widest hover:bg-secondary/90 transition-colors"
+                  >
+                    Get in touch
+                  </button>
+                  <a
+                    href="https://www.linkedin.com/in/steven-herrera-57240b3a7"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-6 py-3 border border-border text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                  >
+                    LinkedIn ↗
+                  </a>
+                </div>
+              </motion.div>
 
             </div>
           </div>
@@ -77,7 +84,13 @@ export default function Home() {
       {/* ── Introduction ── */}
       <section className="py-28 bg-card border-b border-border">
         <div className="max-w-6xl mx-auto px-8">
-          <div className="grid md:grid-cols-12 gap-12">
+          <motion.div
+            className="grid md:grid-cols-12 gap-12"
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
             <div className="md:col-span-3">
               <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">Introduction</span>
             </div>
@@ -97,7 +110,7 @@ export default function Home() {
                 democratic responsiveness.
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -126,14 +139,22 @@ export default function Home() {
                 title: "Civil Liberties & Individual Rights",
                 body: "Analyzing the legal and philosophical dimensions of civil rights, focusing on the balance between individual freedoms and legitimate governmental authority in contemporary contexts.",
               },
-            ].map((area) => (
-              <SpotlightCard key={area.num} className="bg-card p-10 group">
-                <span className="text-4xl font-light text-secondary/40 block mb-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                  {area.num}
-                </span>
-                <h3 className="mb-4 text-foreground">{area.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{area.body}</p>
-              </SpotlightCard>
+            ].map((area, i) => (
+              <motion.div
+                key={area.num}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.5, ease: "easeOut", delay: i * 0.12 }}
+              >
+                <SpotlightCard className="bg-card p-10 group h-full">
+                  <span className="text-4xl font-light text-secondary/40 block mb-6" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                    {area.num}
+                  </span>
+                  <h3 className="mb-4 text-foreground">{area.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{area.body}</p>
+                </SpotlightCard>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -142,7 +163,13 @@ export default function Home() {
       {/* ── Scholarly Aims ── */}
       <section className="py-28 bg-card border-b border-border">
         <div className="max-w-6xl mx-auto px-8">
-          <div className="grid md:grid-cols-2 gap-20 items-start">
+          <motion.div
+            className="grid md:grid-cols-2 gap-20 items-start"
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
 
             <div>
               <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">Research</span>
@@ -185,7 +212,7 @@ export default function Home() {
               </div>
             </div>
 
-          </div>
+          </motion.div>
         </div>
       </section>
 

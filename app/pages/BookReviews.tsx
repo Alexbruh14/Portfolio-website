@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { SpotlightCard } from "../components/SpotlightCard";
 import { reviewContent } from "../data/content";
@@ -70,7 +71,12 @@ export default function BookReviews() {
     const reviewText = reviewContent[selected.id]?.review ?? "";
 
     return (
-      <div className="fixed inset-0 z-[100] bg-background flex flex-col">
+      <motion.div
+        className="fixed inset-0 z-[100] bg-background flex flex-col"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
 
         {/* Compact top bar */}
         <div className="border-b border-border bg-card px-5 py-2.5 flex items-center gap-4 shrink-0">
@@ -130,7 +136,7 @@ export default function BookReviews() {
           </div>
 
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -150,9 +156,15 @@ export default function BookReviews() {
       <section className="py-16 bg-background">
         <div className="max-w-6xl mx-auto px-8">
           <div className="divide-y divide-border">
-            {bookReviews.map((review) => (
-              <SpotlightCard
+            {bookReviews.map((review, i) => (
+              <motion.div
                 key={review.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.45, ease: "easeOut", delay: i * 0.07 }}
+              >
+              <SpotlightCard
                 onClick={() => setSelected(review)}
                 className="group flex gap-8 py-10 cursor-pointer -mx-4 px-4"
               >
@@ -172,13 +184,14 @@ export default function BookReviews() {
                     </div>
                     <h3 className="mb-1 text-foreground group-hover:text-secondary transition-colors">{review.bookTitle}</h3>
                     <p className="text-sm text-muted-foreground italic mb-3">by {review.author}</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{review.excerpt}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{review.excerpt}</p>
                   </div>
                   <span className="mt-4 text-xs tracking-[0.15em] uppercase text-muted-foreground group-hover:text-secondary transition-colors">
                     Open Review →
                   </span>
                 </div>
               </SpotlightCard>
+              </motion.div>
             ))}
           </div>
         </div>

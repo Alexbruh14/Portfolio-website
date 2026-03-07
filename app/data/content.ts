@@ -20,7 +20,7 @@ export interface ReviewContent {
 
 export const essayContent: Record<number, EssayContent> = {
   1: {
-    summary: "This essay was written in an Ancient Political Thought class taught by Professor Dean Mathiowetz. This essay explores the great General Thucydides' detailed account of Athens and the Greek region before and after the battle between Athens and Sparta. Among many of the vastly intresting details Thucydides examines the one this paper is about is his diagnosis of stasis,",
+    summary: "This essay was written in an Ancient Political Thought class taught by Professor Dean Mathiowetz. This essay explores the great General Thucydides' detailed account of Athens and the Greek region before and durring the battle between Athens and Sparta. Among many of the vastly intresting details Thucydides examines the one this paper is about is his diagnosis of Stasis, (the greek term for corruption, revolution, degeneration). His point is that Stasis is an innate part of humans. He examines this in the Corcyran Revolution where we see brutal attocities being commited amongs the people. Fathers and sons fighting in the streets and chaos for ten days. My analysis compares Thucydides' examination of Stasis to Plato's imagined solution. Plato's Republic   ",
     notes: "TEST NOTES",
     pdfFile: "Ancient Political Thought Midterm Essay .pdf",
   },
