@@ -35,10 +35,12 @@ function AnnotatedText({
   text,
   annotations,
   containerRef,
+  hoveredId,
 }: {
   text: string;
   annotations: EssayAnnotation[];
   containerRef: React.RefObject<HTMLDivElement | null>;
+  hoveredId: number | null;
 }) {
   if (!annotations.length) {
     return (
@@ -86,12 +88,21 @@ function AnnotatedText({
     >
       {segments.map((seg, i) => {
         if (!seg.anns.length) return <span key={i}>{seg.text}</span>;
-        const c = getColor(seg.anns[0].color);
+        const ann = seg.anns[0];
+        const c = getColor(ann.color);
+        const isHovered = ann.id === hoveredId;
         return (
           <mark
             key={i}
-            style={{ backgroundColor: c.bg, borderBottom: `2px solid ${c.border}`, borderRadius: "2px", padding: "0 1px" }}
-            title={seg.anns[0].comment}
+            style={{
+              backgroundColor: isHovered ? c.border : c.bg,
+              borderBottom: `2px solid ${c.border}`,
+              borderRadius: "2px",
+              padding: "0 1px",
+              transition: "background-color 0.15s",
+              boxShadow: isHovered ? `0 0 0 2px ${c.border}40` : "none",
+            }}
+            title={ann.comment}
           >
             {seg.text}
           </mark>
@@ -178,23 +189,51 @@ function AnnotationPopup({
 // ── Annotation card ───────────────────────────────────────────
 function AnnotationCard({
   annotation,
+  index,
   onDelete,
   onColorChange,
   isAdmin,
+  onHoverIn,
+  onHoverOut,
+  isHovered,
 }: {
   annotation: EssayAnnotation;
+  index: number;
   onDelete: (id: number) => void;
   onColorChange: (id: number, color: string) => void;
   isAdmin: boolean;
+  onHoverIn: () => void;
+  onHoverOut: () => void;
+  isHovered: boolean;
 }) {
   const c = getColor(annotation.color);
   return (
-    <div className="rounded-lg border p-3 text-xs" style={{ borderColor: c.border, backgroundColor: c.bg }}>
-      <p className="text-[10px] tracking-[0.12em] uppercase text-foreground/50 mb-1">{annotation.section}</p>
-      <p className="text-foreground/90 italic line-clamp-2 mb-1.5">"{annotation.selected_text}"</p>
-      {annotation.comment && <p className="text-foreground/80 leading-relaxed mb-2">{annotation.comment}</p>}
+    <div
+      className="rounded-lg border p-3 text-xs transition-all duration-150 cursor-default"
+      style={{
+        borderColor: isHovered ? c.border : `${c.border}60`,
+        backgroundColor: isHovered ? c.bg : `${c.bg}80`,
+        boxShadow: isHovered ? `0 0 0 1px ${c.border}40, 0 2px 8px ${c.border}20` : "none",
+      }}
+      onPointerEnter={onHoverIn}
+      onPointerLeave={onHoverOut}
+    >
+      {/* Header row: number badge + section label */}
+      <div className="flex items-center gap-2 mb-1.5">
+        <span
+          className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+          style={{ backgroundColor: c.border, color: "#000000cc" }}
+        >
+          {index + 1}
+        </span>
+        <p className="text-[10px] tracking-[0.12em] uppercase text-foreground/40">{annotation.section}</p>
+      </div>
+      <p className="text-foreground/90 italic line-clamp-2 mb-1.5 pl-6">"{annotation.selected_text}"</p>
+      {annotation.comment && (
+        <p className="text-foreground/70 leading-relaxed mb-2 pl-6">{annotation.comment}</p>
+      )}
       {isAdmin && (
-        <div className="flex items-center justify-between mt-1">
+        <div className="flex items-center justify-between mt-1 pl-6">
           <div className="flex gap-1">
             {HIGHLIGHT_COLORS.map(hc => (
               <button
@@ -209,7 +248,10 @@ function AnnotationCard({
               />
             ))}
           </div>
-          <button onClick={() => onDelete(annotation.id)} className="text-[10px] uppercase text-muted-foreground/50 hover:text-red-400 transition-colors">
+          <button
+            onClick={() => onDelete(annotation.id)}
+            className="text-[10px] uppercase text-muted-foreground/50 hover:text-red-400 transition-colors"
+          >
             Remove
           </button>
         </div>
@@ -223,12 +265,15 @@ export default function Essays() {
   const { essays, loading, usingStatic, addEssay, updateEssay, deleteEssay } = useEssays();
   const { user } = useAuth();
 
-  const [selected, setSelected]     = useState<Essay | null>(null);
-  const [formOpen, setFormOpen]     = useState(false);
-  const [editing, setEditing]       = useState<Essay | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [numPages, setNumPages]     = useState(0);
-  const [pdfWidth, setPdfWidth]     = useState(0);
+  const [selected, setSelected]         = useState<Essay | null>(null);
+  const [formOpen, setFormOpen]         = useState(false);
+  const [editing, setEditing]           = useState<Essay | null>(null);
+  const [sidebarOpen, setSidebarOpen]         = useState(true);
+  const [annotationsOpen, setAnnotationsOpen] = useState(false);
+  const [hoveredAnnotationId, setHoveredAnnotationId] = useState<number | null>(null);
+  const prevAnnotationCount = useRef(0);
+  const [numPages, setNumPages]         = useState(0);
+  const [pdfWidth, setPdfWidth]         = useState(0);
 
   const [pendingSelection, setPendingSelection] = useState<{
     text: string;
@@ -282,12 +327,11 @@ export default function Essays() {
         // Store normalized rects relative to pdfContentRef for persistent highlights
         const contentEl = pdfContentRef.current!;
         const contentRect = contentEl.getBoundingClientRect();
-        const scrollTop = pdfContainerRef.current?.scrollTop ?? 0;
         const totalH = contentEl.offsetHeight || 1;
         const totalW = contentRect.width || 1;
         rects = Array.from(range.getClientRects()).map(r => ({
-          top:    (r.top  - contentRect.top  + scrollTop) / totalH,
-          left:   (r.left - contentRect.left)             / totalW,
+          top:    (r.top  - contentRect.top) / totalH,
+          left:   (r.left - contentRect.left) / totalW,
           width:  r.width  / totalW,
           height: r.height / totalH,
         })).filter(r => r.width > 0 && r.height > 0);
@@ -318,6 +362,15 @@ export default function Essays() {
     document.addEventListener("mouseup", handleDocMouseUp);
     return () => document.removeEventListener("mouseup", handleDocMouseUp);
   }, [selected, handleDocMouseUp]);
+
+  // Auto-open annotations panel when a new annotation is added
+  useEffect(() => {
+    if (annotations.length > prevAnnotationCount.current) {
+      setAnnotationsOpen(true);
+      setSidebarOpen(true);
+    }
+    prevAnnotationCount.current = annotations.length;
+  }, [annotations.length]);
 
   function openAdd()           { setEditing(null);   setFormOpen(true); }
   function openEdit(e: Essay)  { setEditing(e);       setFormOpen(true); }
@@ -391,26 +444,53 @@ export default function Essays() {
               {pdfUrl ? (
                 <div ref={pdfContentRef} className="relative">
                   {/* Persistent PDF highlight overlays */}
-                  {pdfAnnotations.map(ann =>
-                    ann.metadata?.rects?.map((r, i) => {
-                      const c = getColor(ann.color);
-                      return (
+                  {pdfAnnotations.map((ann, annIdx) => {
+                    const c = getColor(ann.color);
+                    const isHov = ann.id === hoveredAnnotationId;
+                    const globalIdx = annotations.findIndex(a => a.id === ann.id);
+                    return ann.metadata?.rects?.map((r, i) => (
+                      <div key={`${ann.id}-${i}`}>
+                        {/* Highlight rect */}
                         <div
-                          key={`${ann.id}-${i}`}
-                          className="absolute pointer-events-none"
+                          className="absolute"
                           style={{
                             top:    `${r.top    * 100}%`,
                             left:   `${r.left   * 100}%`,
                             width:  `${r.width  * 100}%`,
                             height: `${r.height * 100}%`,
-                            backgroundColor: c.bg,
+                            backgroundColor: isHov ? c.border : c.bg,
                             borderBottom: `2px solid ${c.border}`,
                             zIndex: 5,
+                            transition: "background-color 0.15s",
+                            boxShadow: isHov ? `0 0 0 1px ${c.border}` : "none",
+                            cursor: "default",
                           }}
+                          onPointerEnter={() => setHoveredAnnotationId(ann.id)}
+                          onPointerLeave={() => setHoveredAnnotationId(null)}
                         />
-                      );
-                    })
-                  )}
+                        {/* Number badge on first rect only */}
+                        {i === 0 && (
+                          <div
+                            className="absolute flex items-center justify-center text-[8px] font-bold pointer-events-none"
+                            style={{
+                              top:    `${r.top * 100}%`,
+                              left:   `${(r.left + r.width) * 100}%`,
+                              width:  "14px",
+                              height: "14px",
+                              borderRadius: "50%",
+                              backgroundColor: c.border,
+                              color: "#000000cc",
+                              transform: "translate(-50%, -50%)",
+                              zIndex: 6,
+                              opacity: isHov ? 1 : 0.8,
+                            }}
+                          >
+                            {globalIdx + 1}
+                          </div>
+                        )}
+                      </div>
+                    ));
+                  })}
                   <Document
                     file={pdfUrl}
                     onLoadSuccess={({ numPages: n }) => setNumPages(n)}
@@ -445,6 +525,19 @@ export default function Essays() {
             </div>
           </div>
 
+          {/* ── Thin divider strip with protruding toggle pill ─────── */}
+          <div className="w-px shrink-0 border-l border-border relative z-10">
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-5 h-10 bg-card border border-border rounded-full flex items-center justify-center hover:bg-muted/40 transition-colors shadow-sm"
+              title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              <span className="text-muted-foreground/50 text-[10px] select-none leading-none">
+                {sidebarOpen ? "›" : "‹"}
+              </span>
+            </button>
+          </div>
+
           {/* ── Collapsible right sidebar ───────────────────────── */}
           <AnimatePresence initial={false}>
             {sidebarOpen && (
@@ -454,9 +547,9 @@ export default function Essays() {
                 animate={{ width: "24rem", opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ duration: 0.25, ease: "easeInOut" }}
-                className="shrink-0 border-l border-border overflow-hidden flex flex-col"
+                className="shrink-0 overflow-hidden flex flex-col"
               >
-                {/* Fixed-width inner box so content doesn't squish during animation */}
+                {/* Fixed-width inner so content doesn't squish during animation */}
                 <div className="w-96 h-full flex flex-col bg-card overflow-y-auto">
 
                   {/* Summary */}
@@ -469,6 +562,7 @@ export default function Essays() {
                         text={selected.summary}
                         annotations={summaryAnnotations}
                         containerRef={summaryRef}
+                        hoveredId={hoveredAnnotationId}
                       />
                     ) : (
                       <div ref={summaryRef} className="flex items-center justify-center py-8">
@@ -487,6 +581,7 @@ export default function Essays() {
                         text={selected.notes}
                         annotations={notesAnnotations}
                         containerRef={notesRef}
+                        hoveredId={hoveredAnnotationId}
                       />
                     ) : (
                       <div ref={notesRef} className="flex items-center justify-center py-8">
@@ -495,52 +590,72 @@ export default function Essays() {
                     )}
                   </div>
 
-                  {/* Annotations */}
-                  <div className="flex-1 flex flex-col">
-                    <div className="px-4 py-2 border-b border-border shrink-0 flex items-center justify-between">
-                      <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Annotations</span>
-                      {annotations.length > 0 && (
-                        <span className="text-[10px] text-secondary/60">{annotations.length}</span>
+                  {/* Annotations — collapsed by default */}
+                  <div className="border-t border-border">
+                    <button
+                      onClick={() => setAnnotationsOpen(o => !o)}
+                      className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted/20 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Annotations</span>
+                        {annotations.length > 0 && (
+                          <span className="text-[10px] bg-secondary/20 text-secondary px-1.5 py-0.5 rounded-full tabular-nums">
+                            {annotations.length}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="text-muted-foreground/40 text-xs transition-transform duration-200"
+                        style={{ display: "inline-block", transform: annotationsOpen ? "rotate(0deg)" : "rotate(-90deg)" }}
+                      >
+                        ▾
+                      </span>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {annotationsOpen && (
+                        <motion.div
+                          key="annotations"
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          {annotations.length === 0 ? (
+                            <div className="px-4 py-6 text-center">
+                              <p className="text-xs text-muted-foreground/30 tracking-[0.15em] uppercase">
+                                {user ? "Select text on the PDF, summary, or notes" : "No annotations"}
+                              </p>
+                            </div>
+                          ) : (
+                            <div
+                              className="p-3 flex flex-col gap-3"
+                              onMouseLeave={() => setHoveredAnnotationId(null)}
+                            >
+                              {annotations.map((ann, idx) => (
+                                <AnnotationCard
+                                  key={ann.id}
+                                  annotation={ann}
+                                  index={idx}
+                                  onDelete={deleteAnnotation}
+                                  onColorChange={(id, color) => updateAnnotation(id, { color })}
+                                  isAdmin={!!user}
+                                  onHoverIn={() => setHoveredAnnotationId(ann.id)}
+                                  onHoverOut={() => setHoveredAnnotationId(null)}
+                                  isHovered={hoveredAnnotationId === ann.id}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </motion.div>
                       )}
-                    </div>
-                    {annotations.length === 0 ? (
-                      <div className="flex-1 flex items-center justify-center p-4">
-                        <p className="text-xs text-muted-foreground/30 tracking-[0.15em] uppercase text-center">
-                          {user ? "Select text on the PDF, summary, or notes to annotate" : "No annotations"}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="p-3 flex flex-col gap-3">
-                        {annotations.map(ann => (
-                          <AnnotationCard
-                            key={ann.id}
-                            annotation={ann}
-                            onDelete={deleteAnnotation}
-                            onColorChange={(id, color) => updateAnnotation(id, { color })}
-                            isAdmin={!!user}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    </AnimatePresence>
                   </div>
+
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* ── Sidebar toggle tab ──────────────────────────────── */}
-          <button
-            onClick={() => setSidebarOpen(o => !o)}
-            className="w-7 shrink-0 flex items-center justify-center border-l border-border bg-card hover:bg-muted/30 transition-colors"
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            <span
-              className="text-muted-foreground/60 text-xs select-none"
-              style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", letterSpacing: "0.1em" }}
-            >
-              {sidebarOpen ? "▸" : "◂"} Notes
-            </span>
-          </button>
         </div>
 
         {/* Annotation popup */}

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSiteContent } from "./SiteContentContext";
 
 export interface ColorPalette {
@@ -131,21 +131,23 @@ export const PALETTES: ColorPalette[] = [
   },
 ];
 
-export function applyPalette(palette: ColorPalette) {
+export function applyVars(vars: Record<string, string>) {
   const root = document.documentElement;
-  Object.entries(palette.vars).forEach(([key, value]) => {
+  Object.entries(vars).forEach(([key, value]) => {
     root.style.setProperty(`--${key}`, value);
   });
 }
 
 interface ThemeContextValue {
-  paletteId: string;
-  setPalette: (id: string) => Promise<void>;
+  vars: Record<string, string>;
+  setColorVar: (key: string, value: string) => void;
+  applyPreset: (paletteId: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  paletteId: "midnight-terracotta",
-  setPalette: async () => {},
+  vars: PALETTES[0].vars,
+  setColorVar: () => {},
+  applyPreset: () => {},
 });
 
 export function useTheme() {
@@ -154,27 +156,48 @@ export function useTheme() {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { get, update } = useSiteContent();
-  const savedId = get("theme_palette") || "midnight-terracotta";
-  const [paletteId, setPaletteId] = useState(savedId);
 
-  useEffect(() => {
-    const palette = PALETTES.find(p => p.id === savedId);
-    if (palette) {
-      applyPalette(palette);
-      setPaletteId(savedId);
+  function initVars(): Record<string, string> {
+    const saved = get("theme_colors");
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
     }
-  }, [savedId]);
+    const savedId = get("theme_palette");
+    return (PALETTES.find(p => p.id === savedId) ?? PALETTES[0]).vars;
+  }
 
-  async function setPalette(id: string) {
-    const palette = PALETTES.find(p => p.id === id);
+  const [vars, setVars] = useState<Record<string, string>>(initVars);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Apply on mount
+  useEffect(() => {
+    applyVars(vars);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function setColorVar(key: string, value: string) {
+    document.documentElement.style.setProperty(`--${key}`, value);
+    setVars(prev => {
+      const next = { ...prev, [key]: value };
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        update("theme_colors", JSON.stringify(next));
+      }, 800);
+      return next;
+    });
+  }
+
+  function applyPreset(paletteId: string) {
+    const palette = PALETTES.find(p => p.id === paletteId);
     if (!palette) return;
-    applyPalette(palette);
-    setPaletteId(id);
-    await update("theme_palette", id);
+    applyVars(palette.vars);
+    setVars(palette.vars);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    update("theme_colors", JSON.stringify(palette.vars));
   }
 
   return (
-    <ThemeContext.Provider value={{ paletteId, setPalette }}>
+    <ThemeContext.Provider value={{ vars, setColorVar, applyPreset }}>
       {children}
     </ThemeContext.Provider>
   );

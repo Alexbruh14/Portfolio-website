@@ -1,12 +1,87 @@
+import { useRef } from "react";
 import { useTheme, PALETTES } from "../../contexts/ThemeContext";
 
+// ── Color variable groups ─────────────────────────────────────
+const COLOR_GROUPS = [
+  {
+    label: "Backgrounds",
+    vars: [
+      { key: "background",   label: "Page background" },
+      { key: "card",         label: "Cards & panels" },
+      { key: "muted",        label: "Subtle background" },
+      { key: "accent",       label: "Accent background" },
+    ],
+  },
+  {
+    label: "Text",
+    vars: [
+      { key: "foreground",        label: "Main text" },
+      { key: "muted-foreground",  label: "Secondary text" },
+    ],
+  },
+  {
+    label: "Brand",
+    vars: [
+      { key: "secondary", label: "Accent / brand color" },
+      { key: "primary",   label: "Primary color" },
+      { key: "ring",      label: "Focus ring" },
+    ],
+  },
+  {
+    label: "UI",
+    vars: [
+      { key: "border",            label: "Borders" },
+      { key: "switch-background", label: "Toggle background" },
+    ],
+  },
+];
+
+// ── Single color row ──────────────────────────────────────────
+function ColorRow({
+  label,
+  colorKey,
+  value,
+  onChange,
+}: {
+  label: string;
+  colorKey: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hex = value?.startsWith("#") ? value : value;
+
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-b border-border/40 last:border-b-0">
+      <span className="flex-1 text-xs text-muted-foreground">{label}</span>
+      <span className="text-[10px] font-mono text-muted-foreground/40 w-[4.5rem] text-right select-all tabular-nums">
+        {hex}
+      </span>
+      <button
+        onClick={() => inputRef.current?.click()}
+        className="w-7 h-7 rounded-sm border border-white/10 hover:scale-110 hover:border-secondary/40 transition-all shrink-0 shadow-inner"
+        style={{ backgroundColor: hex }}
+        title={`Edit ${label}`}
+      />
+      <input
+        ref={inputRef}
+        type="color"
+        value={hex.startsWith("#") ? hex : "#000000"}
+        onChange={e => onChange(e.target.value)}
+        className="sr-only"
+      />
+    </div>
+  );
+}
+
+// ── Main editor ───────────────────────────────────────────────
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
 export function ColorPaletteEditor({ open, onClose }: Props) {
-  const { paletteId, setPalette } = useTheme();
+  const { vars, setColorVar, applyPreset } = useTheme();
 
   if (!open) return null;
 
@@ -14,69 +89,65 @@ export function ColorPaletteEditor({ open, onClose }: Props) {
     <div className="fixed inset-0 z-[300] flex items-center justify-center">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-card border border-border w-full max-w-md z-10">
+      <div className="relative bg-card border border-border w-full max-w-sm max-h-[85vh] flex flex-col z-10">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
-          <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">Color Palette</span>
+        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between shrink-0">
+          <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">Color Editor</span>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
         </div>
 
-        <div className="p-6 space-y-2">
-          <p className="text-[10px] text-muted-foreground/50 tracking-[0.1em] uppercase mb-5">
-            Choose a theme for your portfolio
-          </p>
+        <div className="overflow-y-auto flex-1">
+          {/* Quick theme presets */}
+          <div className="px-5 py-4 border-b border-border">
+            <p className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 mb-3">Quick Themes</p>
+            <div className="flex gap-2 flex-wrap">
+              {PALETTES.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => applyPreset(p.id)}
+                  title={p.name}
+                  className="flex flex-col items-center gap-1 p-1.5 border border-border rounded hover:border-secondary/50 hover:bg-muted/30 transition-all group"
+                >
+                  <div className="flex gap-px">
+                    <div className="w-4 h-4 rounded-sm" style={{ background: p.preview.bg }} />
+                    <div className="w-4 h-4 rounded-sm" style={{ background: p.preview.card }} />
+                    <div className="w-4 h-4 rounded-sm" style={{ background: p.preview.accent }} />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground/60 group-hover:text-muted-foreground transition-colors leading-none">
+                    {p.name.split(" ")[0]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-          {PALETTES.map(palette => (
-            <button
-              key={palette.id}
-              onClick={() => setPalette(palette.id)}
-              className={`w-full flex items-center gap-4 p-3 border transition-all text-left ${
-                paletteId === palette.id
-                  ? "border-secondary bg-secondary/5"
-                  : "border-border hover:border-secondary/40 hover:bg-muted/30"
-              }`}
-            >
-              {/* Color preview swatches */}
-              <div className="flex gap-0.5 shrink-0">
-                <div
-                  className="w-9 h-9 border border-white/10"
-                  style={{ background: palette.preview.bg }}
+          {/* Individual color groups */}
+          {COLOR_GROUPS.map(group => (
+            <div key={group.label} className="px-5 py-3 border-b border-border/60 last:border-b-0">
+              <p className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40 mb-1">
+                {group.label}
+              </p>
+              {group.vars.map(({ key, label }) => (
+                <ColorRow
+                  key={key}
+                  label={label}
+                  colorKey={key}
+                  value={vars[key] ?? "#000000"}
+                  onChange={v => setColorVar(key, v)}
                 />
-                <div
-                  className="w-9 h-9 border border-white/10"
-                  style={{ background: palette.preview.card }}
-                />
-                <div
-                  className="w-9 h-9 border border-white/10"
-                  style={{ background: palette.preview.accent }}
-                />
-              </div>
-
-              {/* Mini site preview */}
-              <div
-                className="w-20 h-9 shrink-0 overflow-hidden border border-white/10 flex flex-col justify-center px-2 gap-1"
-                style={{ background: palette.preview.bg }}
-              >
-                <div className="h-px w-6" style={{ background: palette.preview.accent }} />
-                <div className="h-1.5 w-12 rounded-sm opacity-70" style={{ background: palette.preview.accent }} />
-                <div className="h-px w-10 opacity-30" style={{ background: palette.preview.accent }} />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-foreground tracking-[0.08em]">{palette.name}</p>
-              </div>
-
-              {paletteId === palette.id && (
-                <span className="text-[10px] text-secondary tracking-[0.15em] uppercase shrink-0">Active</span>
-              )}
-            </button>
+              ))}
+            </div>
           ))}
         </div>
 
-        <div className="px-6 py-4 border-t border-border">
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-border shrink-0">
+          <p className="text-[10px] text-muted-foreground/30 text-center mb-2.5">
+            Changes save automatically
+          </p>
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 bg-secondary text-secondary-foreground text-xs font-semibold tracking-widest uppercase hover:bg-secondary/90 transition-colors"
+            className="w-full px-4 py-2.5 bg-secondary text-secondary-foreground text-xs tracking-widest uppercase hover:bg-secondary/90 transition-colors"
           >
             Done
           </button>
