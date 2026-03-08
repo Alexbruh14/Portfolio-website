@@ -118,7 +118,9 @@ export function useBookReviews() {
   }
 
   async function updateReview(id: number, updates: Partial<Omit<BookReview, "id">>) {
-    const { error } = await supabase.from("book_reviews").update(updates).eq("id", id);
+    const data = { ...updates } as Record<string, unknown>;
+    delete data.id;
+    const { error } = await supabase.from("book_reviews").update(data).eq("id", id);
     if (!error) fetchReviews();
     return error;
   }

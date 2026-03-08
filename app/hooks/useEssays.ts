@@ -124,7 +124,9 @@ export function useEssays() {
   }
 
   async function updateEssay(id: number, updates: Partial<Omit<Essay, "id">>) {
-    const { error } = await supabase.from("essays").update(updates).eq("id", id);
+    const data = { ...updates } as Record<string, unknown>;
+    delete data.id;
+    const { error } = await supabase.from("essays").update(data).eq("id", id);
     if (!error) fetchEssays();
     return error;
   }
