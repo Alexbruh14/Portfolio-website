@@ -1,4 +1,4 @@
-// Renders a small subset of Markdown: **bold**, - bullet lists, and paragraphs.
+// Renders a small subset of Markdown: **bold**, *italic*, - bullet lists, and paragraphs.
 // Usage: <RichText text={someString} className="..." />
 
 interface Props {
@@ -7,15 +7,17 @@ interface Props {
 }
 
 function parseLine(line: string, key: number) {
-  // Split on **bold** tokens
-  const parts = line.split(/(\*\*[^*]+\*\*)/g);
+  // Split on **bold** or *italic* tokens (bold must be checked first)
+  const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return (
     <span key={key}>
-      {parts.map((part, i) =>
-        part.startsWith("**") && part.endsWith("**")
-          ? <strong key={i}>{part.slice(2, -2)}</strong>
-          : part
-      )}
+      {parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**"))
+          return <strong key={i}>{part.slice(2, -2)}</strong>;
+        if (part.startsWith("*") && part.endsWith("*"))
+          return <em key={i}>{part.slice(1, -1)}</em>;
+        return part;
+      })}
     </span>
   );
 }

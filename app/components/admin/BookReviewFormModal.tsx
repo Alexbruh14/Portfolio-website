@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import type { BookReview } from "../../hooks/useBookReviews";
 import { ImageLibraryModal } from "./ImageLibraryModal";
 import { useImageLibrary } from "../../hooks/useImageLibrary";
+import { RichTextarea } from "./RichTextarea";
 
 type FormData = Omit<BookReview, "id">;
 
@@ -149,12 +150,11 @@ export function BookReviewFormModal({ open, onClose, onSave, onDelete, initial }
             hint="Shown on the reviews list"
           />
 
-          <TextareaField
+          <RichTextarea
             label="Full Review"
             value={form.review_text}
             onChange={v => set("review_text", v)}
             rows={6}
-            hint="Supports **bold** and - bullet points"
           />
 
           {error && <p className="text-xs text-destructive">{error}</p>}

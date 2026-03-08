@@ -30,6 +30,18 @@ function getColor(id: string) {
   return HIGHLIGHT_COLORS.find(c => c.id === id) ?? HIGHLIGHT_COLORS[0];
 }
 
+// ── Inline markdown parser (bold / italic) ────────────────────
+function parseInline(raw: string): React.ReactNode {
+  const parts = raw.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**"))
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("*") && part.endsWith("*"))
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
+
 // ── Annotated text (summary / notes) ─────────────────────────
 function AnnotatedText({
   text,
@@ -48,7 +60,7 @@ function AnnotatedText({
         ref={containerRef}
         className="p-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap select-text cursor-text"
       >
-        {text}
+        {parseInline(text)}
       </div>
     );
   }
@@ -87,7 +99,7 @@ function AnnotatedText({
       className="p-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap select-text cursor-text"
     >
       {segments.map((seg, i) => {
-        if (!seg.anns.length) return <span key={i}>{seg.text}</span>;
+        if (!seg.anns.length) return <span key={i}>{parseInline(seg.text)}</span>;
         const ann = seg.anns[0];
         const c = getColor(ann.color);
         const isHovered = ann.id === hoveredId;
@@ -104,7 +116,7 @@ function AnnotatedText({
             }}
             title={ann.comment}
           >
-            {seg.text}
+            {parseInline(seg.text)}
           </mark>
         );
       })}

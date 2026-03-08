@@ -3,6 +3,7 @@ import type { Essay } from "../../hooks/useEssays";
 import { ImageLibraryModal } from "./ImageLibraryModal";
 import { useImageLibrary } from "../../hooks/useImageLibrary";
 import { supabase } from "../../../lib/supabase";
+import { RichTextarea } from "./RichTextarea";
 
 const PDF_BUCKET = "portfolio-pdfs";
 const supabaseConfigured = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -221,19 +222,17 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
 
           {tab === "content" && (
             <>
-              <TextareaField
+              <RichTextarea
                 label="Summary"
                 value={form.summary}
                 onChange={v => set("summary", v)}
                 rows={6}
-                hint="Supports **bold** and - bullet points"
               />
-              <TextareaField
+              <RichTextarea
                 label="Notes & Analysis"
                 value={form.notes}
                 onChange={v => set("notes", v)}
                 rows={6}
-                hint="Supports **bold** and - bullet points"
               />
             </>
           )}
