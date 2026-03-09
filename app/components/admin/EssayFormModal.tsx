@@ -4,6 +4,7 @@ import { ImageLibraryModal } from "./ImageLibraryModal";
 import { useImageLibrary } from "../../hooks/useImageLibrary";
 import { supabase } from "../../../lib/supabase";
 import { RichTextarea } from "./RichTextarea";
+import { ImagePositionEditor, parseImageValue, serializeImageValue } from "./ImagePositionEditor";
 
 const PDF_BUCKET = "portfolio-pdfs";
 const supabaseConfigured = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -38,6 +39,8 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
   const [tab, setTab] = useState<"info" | "content">("info");
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [imgEditorOpen, setImgEditorOpen] = useState(false);
   const { upload, uploading } = useImageLibrary();
   const fileRef = useRef<HTMLInputElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
@@ -54,9 +57,20 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
     const file = e.target.files?.[0];
     if (!file || !supabaseConfigured) return;
     setPdfUploading(true);
-    const filename = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-    const { error } = await supabase.storage.from(PDF_BUCKET).upload(filename, file, { cacheControl: "3600", upsert: false });
-    if (!error) {
+    setPdfError(null);
+    const filename = `${Date.now()}-${file.name
+      .replace(/\s+/g, "-")           // spaces → dashes
+      .replace(/[^\x20-\x7E]/g, "-") // non-ASCII (em dash, smart quotes, etc.) → dash
+      .replace(/[^a-zA-Z0-9._-]/g, "-") // remaining special chars → dash
+      .replace(/-+/g, "-")            // collapse consecutive dashes
+      .replace(/^-|-(?=\.)/g, "")     // strip leading dash or dash before extension
+    }`;
+    const { error: uploadError } = await supabase.storage
+      .from(PDF_BUCKET)
+      .upload(filename, file, { cacheControl: "3600", upsert: false });
+    if (uploadError) {
+      setPdfError(`Upload failed: ${uploadError.message}`);
+    } else {
       const { data } = supabase.storage.from(PDF_BUCKET).getPublicUrl(filename);
       set("pdf_file", data.publicUrl);
     }
@@ -68,6 +82,7 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
     if (open) {
       setForm(initial ? { ...initial } : EMPTY);
       setError(null);
+      setPdfError(null);
       setConfirmDelete(false);
       setTab("info");
     }
@@ -148,9 +163,23 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
               <div>
                 <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground block mb-1.5">Cover Image</label>
                 <div className="flex items-center gap-3">
-                  {form.image_url && (
-                    <img src={form.image_url} alt="" className="w-16 h-16 object-cover border border-border shrink-0" />
-                  )}
+                  {form.image_url && (() => {
+                    const p = parseImageValue(form.image_url, form.image_url);
+                    return (
+                      <div className="w-16 h-16 overflow-hidden border border-border shrink-0 relative">
+                        <img
+                          src={p.url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          style={{
+                            objectPosition: `${p.x}% ${p.y}%`,
+                            transform: `scale(${p.scale})`,
+                            transformOrigin: `${p.x}% ${p.y}%`,
+                          }}
+                        />
+                      </div>
+                    );
+                  })()}
                   <button
                     type="button"
                     onClick={() => setLibraryOpen(true)}
@@ -169,12 +198,29 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
                   </button>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleDirectUpload} />
                   {form.image_url && (
-                    <button type="button" onClick={() => set("image_url", "")} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
-                      Remove
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setImgEditorOpen(true)}
+                        className="px-3 py-2 border border-border text-[10px] tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors"
+                      >
+                        ✦ Position
+                      </button>
+                      <button type="button" onClick={() => set("image_url", "")} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
+                        Remove
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
+
+              <ImagePositionEditor
+                open={imgEditorOpen}
+                value={parseImageValue(form.image_url, form.image_url)}
+                onClose={() => setImgEditorOpen(false)}
+                onConfirm={pos => { set("image_url", serializeImageValue(pos)); setImgEditorOpen(false); }}
+                previewAspectRatio={32 / 40}
+              />
               <ImageLibraryModal
                 open={libraryOpen}
                 onClose={() => setLibraryOpen(false)}
@@ -182,33 +228,39 @@ export function EssayFormModal({ open, onClose, onSave, onDelete, initial }: Pro
               />
               <div>
                 <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground block mb-1.5">PDF File</label>
-                <div className="flex items-center gap-3">
-                  {form.pdf_file && (
-                    <a
-                      href={form.pdf_file.startsWith("http") ? form.pdf_file : `${import.meta.env.BASE_URL}pdfs/${form.pdf_file}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-secondary underline underline-offset-2 truncate max-w-[140px]"
-                    >
-                      {form.pdf_file.startsWith("http") ? form.pdf_file.split("/").pop() : form.pdf_file}
-                    </a>
-                  )}
+                <div className="flex items-center gap-3 mb-2">
                   <button
                     type="button"
-                    onClick={() => pdfRef.current?.click()}
+                    onClick={() => { setPdfError(null); pdfRef.current?.click(); }}
                     disabled={pdfUploading || !supabaseConfigured}
-                    title={supabaseConfigured ? "Upload a PDF" : "Supabase not configured"}
+                    title={supabaseConfigured ? "Upload a PDF from your computer" : "Supabase not configured"}
                     className="px-3 py-2 border border-border text-[10px] tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors disabled:opacity-50"
                   >
-                    {pdfUploading ? "Uploading…" : form.pdf_file ? "Replace PDF" : "↑ Upload PDF"}
+                    {pdfUploading ? "Uploading…" : "↑ Upload PDF"}
                   </button>
                   <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" onChange={handlePdfUpload} />
                   {form.pdf_file && (
-                    <button type="button" onClick={() => set("pdf_file", "")} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
+                    <button type="button" onClick={() => { set("pdf_file", ""); setPdfError(null); }} className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors">
                       Remove
                     </button>
                   )}
                 </div>
+                {pdfError && (
+                  <p className="text-[10px] text-destructive mb-2">{pdfError}</p>
+                )}
+                {/* URL fallback — paste a direct link to a PDF */}
+                <input
+                  type="url"
+                  value={form.pdf_file}
+                  onChange={e => { set("pdf_file", e.target.value); setPdfError(null); }}
+                  placeholder="…or paste a PDF URL directly"
+                  className="w-full bg-muted text-foreground px-3 py-2 text-xs border border-transparent focus:outline-none focus:border-secondary transition-colors"
+                />
+                {form.pdf_file && (
+                  <p className="text-[10px] text-muted-foreground/50 mt-1 truncate">
+                    {form.pdf_file.startsWith("http") ? form.pdf_file.split("/").pop() : form.pdf_file}
+                  </p>
+                )}
               </div>
               <TextareaField
                 label="Short Excerpt"

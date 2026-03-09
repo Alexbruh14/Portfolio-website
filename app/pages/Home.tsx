@@ -251,7 +251,7 @@ export default function Home() {
                       rel="noopener noreferrer"
                       className="text-foreground hover:text-secondary transition-colors"
                     >
-                      linkedin.com/in/profile
+                      linkedin.com/in/Alex-Herrera
                     </a>
                   </div>
                 </div>

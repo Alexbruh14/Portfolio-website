@@ -1,5 +1,6 @@
-// Renders a small subset of Markdown: **bold**, *italic*, - bullet lists, and paragraphs.
+// Renders a small subset of Markdown: **bold**, *italic*, ## headings, - bullet lists.
 // Usage: <RichText text={someString} className="..." />
+import type { ReactNode } from "react";
 
 interface Props {
   text: string;
@@ -23,35 +24,56 @@ function parseLine(line: string, key: number) {
 }
 
 export function RichText({ text, className }: Props) {
-  const paragraphs = text.split(/\n\n+/);
+  // Split into individual lines (not double-newline paragraphs) to handle headings per-line
+  const lines = text.split("\n");
 
-  return (
-    <div className={className}>
-      {paragraphs.map((block, pi) => {
-        const lines = block.split("\n").filter(l => l.trim() !== "");
-        const isList = lines.every(l => /^[-•]\s/.test(l.trim()));
+  const rendered: ReactNode[] = [];
+  let i = 0;
 
-        if (isList) {
-          return (
-            <ul key={pi} className="list-disc list-outside pl-5 space-y-1 mb-3">
-              {lines.map((l, li) => (
-                <li key={li}>{parseLine(l.replace(/^[-•]\s+/, ""), li)}</li>
-              ))}
-            </ul>
-          );
-        }
+  while (i < lines.length) {
+    const line = lines[i];
 
-        return (
-          <p key={pi} className="mb-3 last:mb-0">
-            {lines.map((l, li) => (
-              <span key={li}>
-                {parseLine(l, li)}
-                {li < lines.length - 1 && <br />}
-              </span>
-            ))}
-          </p>
-        );
-      })}
-    </div>
-  );
+    // Heading
+    if (line.startsWith("## ")) {
+      rendered.push(
+        <p key={i} className="text-base font-semibold text-foreground mt-3 mb-1">
+          {parseLine(line.slice(3), i)}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    // Bullet block: collect consecutive bullet lines
+    if (/^[-•]\s/.test(line.trim())) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-•]\s/.test(lines[i].trim())) {
+        items.push(lines[i].replace(/^[-•]\s+/, ""));
+        i++;
+      }
+      rendered.push(
+        <ul key={`ul-${i}`} className="list-disc list-outside pl-5 space-y-1 mb-3">
+          {items.map((item, li) => <li key={li}>{parseLine(item, li)}</li>)}
+        </ul>
+      );
+      continue;
+    }
+
+    // Blank line → spacing
+    if (line.trim() === "") {
+      rendered.push(<div key={i} className="h-2" />);
+      i++;
+      continue;
+    }
+
+    // Normal paragraph line
+    rendered.push(
+      <span key={i} className="block leading-relaxed">
+        {parseLine(line, i)}
+      </span>
+    );
+    i++;
+  }
+
+  return <div className={className}>{rendered}</div>;
 }

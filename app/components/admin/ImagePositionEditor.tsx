@@ -12,9 +12,11 @@ interface Props {
   value: ImagePosition;
   onClose: () => void;
   onConfirm: (pos: ImagePosition) => void;
+  /** Force the preview to this aspect ratio (width/height). Defaults to natural image ratio. */
+  previewAspectRatio?: number;
 }
 
-export function ImagePositionEditor({ open, value, onClose, onConfirm }: Props) {
+export function ImagePositionEditor({ open, value, onClose, onConfirm, previewAspectRatio }: Props) {
   const [pos, setPos] = useState<ImagePosition>(value);
   const [naturalAspect, setNaturalAspect] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,7 +77,7 @@ export function ImagePositionEditor({ open, value, onClose, onConfirm }: Props) 
         <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
           <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">Position Image</span>
           <span className="text-[10px] text-muted-foreground/50">Click or drag to set focus point</span>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
         </div>
 
         {/* Preview — drag area */}
@@ -83,7 +85,7 @@ export function ImagePositionEditor({ open, value, onClose, onConfirm }: Props) 
           <div
             ref={containerRef}
             className="relative w-full overflow-hidden cursor-crosshair select-none border border-border"
-            style={{ aspectRatio: naturalAspect ?? (16 / 9), maxHeight: "65vh" }}
+            style={{ aspectRatio: previewAspectRatio ?? naturalAspect ?? (16 / 9), maxHeight: "65vh" }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -166,6 +168,7 @@ export function ImagePositionEditor({ open, value, onClose, onConfirm }: Props) 
               { label: "Right", x: 80, y: 50 },
             ].map(p => (
               <button
+                type="button"
                 key={p.label}
                 onClick={() => setPos(prev => ({ ...prev, x: p.x, y: p.y }))}
                 className="px-2.5 py-1 border border-border text-[10px] uppercase text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors"
@@ -174,6 +177,7 @@ export function ImagePositionEditor({ open, value, onClose, onConfirm }: Props) 
               </button>
             ))}
             <button
+              type="button"
               onClick={() => setPos(prev => ({ ...prev, scale: 1.0 }))}
               className="px-2.5 py-1 border border-border text-[10px] uppercase text-muted-foreground hover:text-foreground hover:border-secondary/50 transition-colors ml-auto"
             >
@@ -185,12 +189,14 @@ export function ImagePositionEditor({ open, value, onClose, onConfirm }: Props) 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-border flex gap-3">
           <button
+            type="button"
             onClick={() => onConfirm(pos)}
             className="flex-1 px-4 py-2.5 bg-secondary text-secondary-foreground text-xs font-semibold tracking-widest uppercase hover:bg-secondary/90 transition-colors"
           >
             Apply
           </button>
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2.5 border border-border text-xs tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors"
           >

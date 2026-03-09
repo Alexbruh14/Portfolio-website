@@ -168,7 +168,7 @@ export default function BookReviews() {
                         </div>
                         <h3 className="mb-1 text-foreground group-hover:text-secondary transition-colors">{review.book_title}</h3>
                         <p className="text-sm text-muted-foreground italic mb-3">by {review.author}</p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{review.excerpt}</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{review.excerpt}</p>
                       </div>
                       <div className="mt-4 flex items-center gap-4">
                         <span className="text-xs tracking-[0.15em] uppercase text-muted-foreground group-hover:text-secondary transition-colors">

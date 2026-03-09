@@ -8,6 +8,7 @@ import { SpotlightCard } from "../components/SpotlightCard";
 import { AdminToolbar } from "../components/admin/AdminToolbar";
 import { EssayFormModal } from "../components/admin/EssayFormModal";
 import { useEssays, type Essay } from "../hooks/useEssays";
+import { parseImageValue } from "../components/admin/ImagePositionEditor";
 import { useEssayAnnotations, type EssayAnnotation, type HighlightRect } from "../hooks/useEssayAnnotations";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -54,70 +55,96 @@ function AnnotatedText({
   containerRef: React.RefObject<HTMLDivElement | null>;
   hoveredId: number | null;
 }) {
-  if (!annotations.length) {
-    return (
-      <div
-        ref={containerRef}
-        className="p-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap select-text cursor-text"
-      >
-        {parseInline(text)}
-      </div>
-    );
-  }
-
+  // Build annotation marks on raw text
   const marks: Array<{ start: number; end: number; ann: EssayAnnotation }> = [];
   for (const ann of annotations) {
     const idx = text.indexOf(ann.selected_text);
     if (idx !== -1) marks.push({ start: idx, end: idx + ann.selected_text.length, ann });
   }
-  marks.sort((a, b) => a.start - b.start);
 
-  const events: Array<{ pos: number; type: "start" | "end"; ann: EssayAnnotation }> = [];
-  for (const m of marks) {
-    events.push({ pos: m.start, type: "start", ann: m.ann });
-    events.push({ pos: m.end,   type: "end",   ann: m.ann });
+  // Split text into lines with their absolute positions
+  const lines: Array<{ text: string; start: number }> = [];
+  let charPos = 0;
+  for (const line of text.split("\n")) {
+    lines.push({ text: line, start: charPos });
+    charPos += line.length + 1; // +1 for \n
   }
-  events.sort((a, b) => a.pos - b.pos || (a.type === "end" ? -1 : 1));
 
-  const segments: Array<{ text: string; anns: EssayAnnotation[] }> = [];
-  const active = new Set<EssayAnnotation>();
-  const positions = [...new Set(events.map(e => e.pos))].sort((a, b) => a - b);
-  let pos = 0;
+  function renderSegments(lineText: string, lineStart: number, lineKey: number) {
+    const lineEnd = lineStart + lineText.length;
+    const lineMarks = marks.filter(m => m.start < lineEnd && m.end > lineStart);
 
-  for (const p of positions) {
-    if (p > pos) segments.push({ text: text.slice(pos, p), anns: [...active] });
-    for (const ev of events.filter(e => e.pos === p)) {
-      ev.type === "start" ? active.add(ev.ann) : active.delete(ev.ann);
+    if (!lineMarks.length) return <span key={lineKey}>{parseInline(lineText)}</span>;
+
+    // Build segment events clipped to this line
+    const events: Array<{ pos: number; type: "start" | "end"; ann: EssayAnnotation }> = [];
+    for (const m of lineMarks) {
+      events.push({ pos: Math.max(m.start, lineStart) - lineStart, type: "start", ann: m.ann });
+      events.push({ pos: Math.min(m.end,   lineEnd)  - lineStart, type: "end",   ann: m.ann });
     }
-    pos = p;
+    events.sort((a, b) => a.pos - b.pos || (a.type === "end" ? -1 : 1));
+
+    const segs: Array<{ text: string; anns: EssayAnnotation[] }> = [];
+    const active = new Set<EssayAnnotation>();
+    const positions = [...new Set(events.map(e => e.pos))].sort((a, b) => a - b);
+    let p = 0;
+    for (const pp of positions) {
+      if (pp > p) segs.push({ text: lineText.slice(p, pp), anns: [...active] });
+      for (const ev of events.filter(e => e.pos === pp)) {
+        ev.type === "start" ? active.add(ev.ann) : active.delete(ev.ann);
+      }
+      p = pp;
+    }
+    if (p < lineText.length) segs.push({ text: lineText.slice(p), anns: [...active] });
+
+    return (
+      <span key={lineKey}>
+        {segs.map((seg, i) => {
+          if (!seg.anns.length) return <span key={i}>{parseInline(seg.text)}</span>;
+          const ann = seg.anns[0];
+          const c = getColor(ann.color);
+          const isHovered = ann.id === hoveredId;
+          return (
+            <mark
+              key={i}
+              style={{
+                backgroundColor: isHovered ? c.border : c.bg,
+                borderBottom: `2px solid ${c.border}`,
+                borderRadius: "2px",
+                padding: "0 1px",
+                transition: "background-color 0.15s",
+                boxShadow: isHovered ? `0 0 0 2px ${c.border}40` : "none",
+              }}
+              title={ann.comment}
+            >
+              {parseInline(seg.text)}
+            </mark>
+          );
+        })}
+      </span>
+    );
   }
-  if (pos < text.length) segments.push({ text: text.slice(pos), anns: [...active] });
 
   return (
     <div
       ref={containerRef}
-      className="p-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap select-text cursor-text"
+      className="p-4 text-sm text-muted-foreground leading-relaxed select-text cursor-text"
     >
-      {segments.map((seg, i) => {
-        if (!seg.anns.length) return <span key={i}>{parseInline(seg.text)}</span>;
-        const ann = seg.anns[0];
-        const c = getColor(ann.color);
-        const isHovered = ann.id === hoveredId;
+      {lines.map((line, li) => {
+        if (line.text.startsWith("## ")) {
+          return (
+            <p key={li} className="text-base font-semibold text-foreground mt-3 mb-1">
+              {renderSegments(line.text.slice(3), line.start + 3, li)}
+            </p>
+          );
+        }
+        if (line.text.trim() === "") {
+          return <div key={li} className="h-2" />;
+        }
         return (
-          <mark
-            key={i}
-            style={{
-              backgroundColor: isHovered ? c.border : c.bg,
-              borderBottom: `2px solid ${c.border}`,
-              borderRadius: "2px",
-              padding: "0 1px",
-              transition: "background-color 0.15s",
-              boxShadow: isHovered ? `0 0 0 2px ${c.border}40` : "none",
-            }}
-            title={ann.comment}
-          >
-            {parseInline(seg.text)}
-          </mark>
+          <p key={li} className="leading-relaxed">
+            {renderSegments(line.text, line.start, li)}
+          </p>
         );
       })}
     </div>
@@ -374,6 +401,13 @@ export default function Essays() {
     document.addEventListener("mouseup", handleDocMouseUp);
     return () => document.removeEventListener("mouseup", handleDocMouseUp);
   }, [selected, handleDocMouseUp]);
+
+  // Keep selected in sync with the essays list (e.g. after editing saves pdf_file)
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = essays.find(e => e.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [essays]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open annotations panel when a new annotation is added
   useEffect(() => {
@@ -716,7 +750,7 @@ export default function Essays() {
           <span className="text-[10px] tracking-[0.25em] uppercase text-secondary">Writing</span>
           <h1 className="mt-3 mb-6 text-foreground">Essays</h1>
           <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
-            Scholarly essays examining constitutional law, political philosophy, and legal theory.
+             Essays examining constitutional law, political philosophy, and legal theory.
           </p>
           {usingStatic && user && (
             <p className="mt-4 text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40">
@@ -746,13 +780,23 @@ export default function Essays() {
                     onClick={() => { setNumPages(0); setSelected(essay); }}
                     className="group flex gap-8 py-10 cursor-pointer -mx-4 px-4"
                   >
-                    <div className="shrink-0 w-32 h-40 overflow-hidden">
-                      <ImageWithFallback
-                        src={essay.image_url}
-                        alt={essay.title}
-                        className="w-full h-full object-cover brightness-75 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500"
-                      />
-                    </div>
+                    {(() => {
+                      const p = parseImageValue(essay.image_url, essay.image_url);
+                      return (
+                        <div className="shrink-0 w-32 h-40 overflow-hidden">
+                          <ImageWithFallback
+                            src={p.url}
+                            alt={essay.title}
+                            className="w-full h-full object-cover brightness-75 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500"
+                            style={{
+                              objectPosition: `${p.x}% ${p.y}%`,
+                              transform: `scale(${p.scale})`,
+                              transformOrigin: `${p.x}% ${p.y}%`,
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
                     <div className="flex flex-col justify-between flex-1 min-w-0 py-1">
                       <div>
                         <div className="flex items-center gap-4 mb-3">
@@ -761,7 +805,7 @@ export default function Essays() {
                           <time className="text-xs text-muted-foreground">{essay.date}</time>
                         </div>
                         <h3 className="mb-3 text-foreground group-hover:text-secondary transition-colors">{essay.title}</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{essay.excerpt}</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{essay.excerpt}</p>
                       </div>
                       <div className="mt-4 flex items-center gap-4">
                         <span className="text-xs tracking-[0.15em] uppercase text-muted-foreground group-hover:text-secondary transition-colors">
