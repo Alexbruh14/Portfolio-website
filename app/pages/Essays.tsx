@@ -3,12 +3,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { SpotlightCard } from "../components/SpotlightCard";
 import { AdminToolbar } from "../components/admin/AdminToolbar";
 import { EssayFormModal } from "../components/admin/EssayFormModal";
 import { useEssays, type Essay } from "../hooks/useEssays";
-import { parseImageValue } from "../components/admin/ImagePositionEditor";
+import { parseImageValue, PositionedImage } from "../components/admin/ImagePositionEditor";
 import { useEssayAnnotations, type EssayAnnotation, type HighlightRect } from "../hooks/useEssayAnnotations";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -783,16 +782,14 @@ export default function Essays() {
                     {(() => {
                       const p = parseImageValue(essay.image_url, essay.image_url);
                       return (
-                        <div className="shrink-0 w-32 h-40 overflow-hidden">
-                          <ImageWithFallback
+                        <div className="relative shrink-0 w-32 h-40 overflow-hidden">
+                          <PositionedImage
+                            pos={p}
+                            containerW={128}
+                            containerH={160}
                             src={p.url}
                             alt={essay.title}
-                            className="w-full h-full object-cover brightness-75 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500"
-                            style={{
-                              objectPosition: `${p.x}% ${p.y}%`,
-                              transform: `scale(${p.scale})`,
-                              transformOrigin: `${p.x}% ${p.y}%`,
-                            }}
+                            className="brightness-75 group-hover:brightness-100 group-hover:scale-105 transition-all duration-500"
                           />
                         </div>
                       );
