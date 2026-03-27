@@ -15,7 +15,7 @@ interface Props {
 
 export function EditableImage({ contentKey, defaultUrl, className, alt = "" }: Props) {
   const { user } = useAuth();
-  const { get, update } = useSiteContent();
+  const { get, update, loaded } = useSiteContent();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
@@ -48,6 +48,7 @@ export function EditableImage({ contentKey, defaultUrl, className, alt = "" }: P
   };
 
   if (!user) {
+    if (!loaded) return null;
     return (
       <img
         src={pos.url}

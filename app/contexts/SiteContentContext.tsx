@@ -39,15 +39,18 @@ const supabaseConfigured =
 interface SiteContentCtx {
   get: (key: string) => string;
   update: (key: string, value: string) => Promise<void>;
+  loaded: boolean;
 }
 
 const SiteContentContext = createContext<SiteContentCtx>({
   get: (key) => DEFAULTS[key] ?? "",
   update: async () => {},
+  loaded: false,
 });
 
 export function SiteContentProvider({ children }: { children: ReactNode }) {
   const [content, setContent] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState(!supabaseConfigured);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -55,10 +58,12 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
       .from("site_content")
       .select("key, value")
       .then(({ data }) => {
-        if (!data) return;
-        const map: Record<string, string> = {};
-        for (const row of data) map[row.key] = row.value;
-        setContent(map);
+        if (data) {
+          const map: Record<string, string> = {};
+          for (const row of data) map[row.key] = row.value;
+          setContent(map);
+        }
+        setLoaded(true);
       });
   }, []);
 
@@ -75,7 +80,7 @@ export function SiteContentProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SiteContentContext.Provider value={{ get, update }}>
+    <SiteContentContext.Provider value={{ get, update, loaded }}>
       {children}
     </SiteContentContext.Provider>
   );
